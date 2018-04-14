@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Snake</title>
+	<script src="https://code.jquery.com/jquery-3.3.1.js" type="text/javascript"></script>    
+</head>
+<body style="text-align: center; background-color: #909090">
+    <canvas width="700" height="600" id="canvas"></canvas>
+    
+<script>
+
+$(document).ready(function() {
+var canvas = $("#canvas")[0];
+var ctx = canvas.getContext("2d");
+
+var width = $("#canvas").width();
+var height = $("#canvas").height();
+// set the canvas background to black
+	ctx.fillStyle = "black";
+	ctx.fillRect(0, 0, width, height);
+	ctx.strokeStyle = "black";
+	ctx.strokeRect(0, 0, width, height);
+	
+
+    
+    var size=10; // size of square
+	var score = 0;
+	var speed = 60;
+	
+	// draw a green square on the canvas
+    // at position (x,y) with a width and height of size
+	function drawSquare(x, y, type) {
+		if(type == "snake"){
+			var tempImage = new Image();
+			tempImage.src = "snake"+(Math.floor(Math.random()*4)+1)+".png";
+			ctx.drawImage(tempImage, x*size, y*size, size, size);
+		} else if(type == "apple"){
+			if(food.score > 200 && food.score < 400){
+				var tempImage = new Image();
+				tempImage.src = "gold_apple.png";
+				ctx.drawImage(tempImage, x*size, y*size, size, size);
+			} else if(food.score > 300){
+				var tempImage = new Image();
+				tempImage.src = "purple_apple.png";
+				ctx.drawImage(tempImage, x*size, y*size, size, size);
+			} else{
+				var tempImage = new Image();
+				tempImage.src = "apple.png";
+				ctx.drawImage(tempImage, x*size, y*size, size, size);
+			}
+		}
+	}
+    
+    var food;
+
+	function createFood() {
+        // create the food in a random location
+		food = {
+			x: Math.round(Math.random()*(width-size)/size), 
+			y: Math.round(Math.random()*(height-size)/size),
+			score: Math.floor(Math.random()*4+1)*100,
+		};
+	}
+    var snakeArray;
+
+	function createSnake() {
+		var length = 5; 
+		snakeArray = []; 
+        
+        // create a snake of length 5 squares
+		for(var i = length-1; i >= 0; i--) {
+            // save the x and y positions for each square
+            segment = {x: i, y:0};
+			snakeArray[length-1-i] = segment;
+		}
+	}
+    var direction;
+
+	// keyboard control for arrow keys
+    // make sure the snake does not go back on itself
+	$(document).keydown(function(e) {
+		var key = e.which;
+		if(key == "37" && direction != "right") {
+            direction = "left";
+        } else if(key == "38" && direction != "down") {
+            direction = "up";
+        } else if(key == "39" && direction != "left") {
+            direction = "right";
+        } else if(key == "40" && direction != "up") {
+            direction = "down";
+        }
+	});
+    
+    function gameLoop() {
+        
+        // set the canvas background to black
+    	ctx.fillStyle = "black";
+    	ctx.fillRect(0, 0, width, height);
+    	ctx.strokeStyle = "black";
+    	ctx.strokeRect(0, 0, width, height);
+
+
+        // get position of first segment of snake
+		var nx = snakeArray[0].x;
+		var ny = snakeArray[0].y;
+		
+        // get next position of snake based on direction
+        // if direction is right, increase "x" position by 1.
+        // if direction is left, decrease "x" position by 1.
+        // if direction is down, increase "y" position by 1.
+        // if direction is up, decrease "y" position by 1.
+		if(direction== "right") {
+            nx++;
+        } else if(direction == "left") {
+            nx--;
+        } else if(direction == "up") {
+            ny--;
+        } else if(direction == "down") {
+            ny++;
+        }
+
+        
+        // failed (touching edge) ?
+		if(nx == -1 || nx == width/size || ny == -1 || 
+           ny == height/size) {
+            // game over
+			window.location = "Game Over.html";
+			return;
+		}
+		
+		// touching self ?
+		for(var i = 1; i < snakeArray.length; i++) {
+			var c = snakeArray[i];
+			if(c.x == snakeArray[0].x && c.y == snakeArray[0].y){
+				// game over
+				window.location = "Game Over.html";
+				return;
+			}
+		}
+		
+	
+        // ate food ?
+		if(nx == food.x && ny == food.y) {
+            // add a new segment (tail) to the snake
+			var tail = {x: nx, y: ny};
+            var startingPos = snakeArray.length-1;
+			score+=food.score;
+			speed-=0.1;
+            // create food in a new location
+			createFood();
+            
+		} else {
+	         // save last segment of snake (tail)
+			var tail = snakeArray[snakeArray.length-1]; 
+            var startingPos = snakeArray.length-2;
+			tail.x = nx; tail.y = ny;
+ 		}
+		
+		
+        // move the rest of the segments one up and 
+        // add the tail to the front of the snake to 
+        // simulate movement in the direction
+		for(var i = startingPos; i >= 0; i--) {
+			snakeArray[i+1] = snakeArray[i];
+		}
+        snakeArray[0] = tail;
+		
+        // draw snake
+		for(var i = 0; i < snakeArray.length; i++) {
+			var c = snakeArray[i];
+			drawSquare(c.x, c.y, "snake");
+		}
+
+        // draw food
+		drawSquare(food.x, food.y, "apple");
+		
+		ctx.fillStyle = "#ffccff";
+		ctx.font = "35px Courier";
+		
+		ctx.fillText("Score: "+score, 0, 25);
+	}
+
+    function startGame() {
+        // create snake
+		createSnake();
+        
+        // create food
+		createFood(); 
+        
+        // set initial direction for the snake to move
+        direction = "right";
+        
+        // clear the timer before restarting the game loop
+		if(typeof loopId != "undefined") {
+            clearInterval(loopId);
+        }
+        
+        // start the game loop
+		loopId = setInterval(gameLoop, speed);
+	}
+
+    startGame();
+ });
+</script>
+    
+</body>
+</html>
+	
+	
+
+
